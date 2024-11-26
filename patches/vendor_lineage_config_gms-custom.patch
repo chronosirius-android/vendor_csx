@@ -1,0 +1,13 @@
+diff --git a/config/common_full_phone.mk b/config/common_full_phone.mk
+index c134183..3eec24b 100644
+--- a/config/common_full_phone.mk
++++ b/config/common_full_phone.mk
+@@ -14,6 +14,8 @@ ifeq ($(TARGET_USES_MINI_GAPPS),true)
+ $(call inherit-product, vendor/gms/gms_mini.mk)
+ else ifeq ($(TARGET_USES_PICO_GAPPS),true)
+ $(call inherit-product, vendor/gms/gms_pico.mk)
++else ifeq ($(TARGET_USES_CUSTOM_GAPPS),true)
++$(call inherit-product, vendor/csx/gms_custom.mk)
+ else
+ $(call inherit-product, vendor/gms/gms_full.mk)
+ endif
