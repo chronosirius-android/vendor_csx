@@ -19,32 +19,20 @@
 # product/app
 PRODUCT_PACKAGES += \
     CalculatorGooglePrebuilt_85005407 \
-#    CalendarGooglePrebuilt \ 
-#    CarrierMetrics \ 
     Chrome \
     Chrome-Stub \
-#    DevicePolicyPrebuilt-v10052480 \ 
     GoogleContacts \
-#    GoogleTTS \ 
-#    LatinIMEGooglePrebuilt \ 
     LocationHistoryPrebuilt \
     MarkupGoogle_v2 \
     NgaResources \
     Photos \
     PixelThemesStub \
     PixelThemesStub2022_and_newer \
-#    PixelWallpapers2024 \ 
     PrebuiltDeskClockGoogle_76004981 \
-#    PrebuiltGoogleAdservicesTvp \
-#    PrebuiltGoogleTelemetryTvp \ 
     SoundAmplifierPrebuilt_v4.7.638126989 \
     SoundPickerPrebuilt \
-#    SwitchAccessPrebuilt_1.15.0.629986523 \ 
     TrichromeLibrary \
     TrichromeLibrary-Stub \
-#    Tycho \ 
-#    VoiceAccessPrebuilt \
-#    WallpaperEmojiPrebuilt-v470 \ 
     WebViewGoogle \
     WebViewGoogle-Stub \
     arcore-1.42 \
@@ -70,7 +58,6 @@ endif
 
 PRODUCT_PACKAGES += \
     AICorePrebuilt \
-#    AiWallpapers \  
     AmbientStreaming \
     AndroidAutoStubPrebuilt \
     BetterBugStub \
@@ -79,29 +66,22 @@ PRODUCT_PACKAGES += \
     ConfigUpdater \
     CreativeAssistant \
     DeviceIntelligenceNetworkPrebuilt-astrea_20240329.00_RC02 \
-#    FilesPrebuilt \ 
     GoogleDialer \
     GoogleOneTimeInitializer \
     GoogleRestorePrebuilt-v526684 \
-#    KidsSupervisionStub \ 
-#    MaestroPrebuilt \ 
-    OdadPrebuilt \ # play protect
+    OdadPrebuilt \
     PartnerSetupPrebuilt \
     Phonesky \
     PixelAIPrebuilt \
     PixelLiveWallpaperPrebuilt \
-#    PixelSupportPrebuilt \ 
     PrebuiltBugle \
-#    RecorderPrebuilt_630544637 \ 
     SafetyHubSuwPrebuilt \
-#    ScribePrebuilt_v7.0.633113815 \ 
     SearchSelectorPrebuilt \
     SettingsIntelligenceGooglePrebuilt \
     SetupWizardPrebuilt \
     TurboPrebuilt \
     Velvet \
     WallpaperEffect \
-#    WeatherPixelPrebuilt \ 
     WellbeingPrebuilt
 
 # system/app
@@ -114,7 +94,6 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     DocumentsUIGoogle \
     GooglePackageInstaller \
-    # TagGoogle
 
 # system_ext/app
 PRODUCT_PACKAGES += \
@@ -129,11 +108,9 @@ endif
 
 PRODUCT_PACKAGES += \
     AvatarPickerGoogle \
-    #GoogleFeedback \ 
     GoogleServicesFramework \
     NexusLauncherRelease \
     SetupWizardPixelPrebuilt \
-    # QuickAccessWallet \ 
     StorageManagerGoogle \
     TurboAdapter \
     WallpaperPickerGoogleRelease
