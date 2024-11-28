@@ -19,13 +19,13 @@
 # product/app
 PRODUCT_PACKAGES += \
     CalculatorGooglePrebuilt_85005407 \
-    CalendarGooglePrebuilt \
-    CarrierMetrics \
+#    CalendarGooglePrebuilt \ 
+#    CarrierMetrics \ 
     Chrome \
     Chrome-Stub \
-    DevicePolicyPrebuilt-v10052480 \
+#    DevicePolicyPrebuilt-v10052480 \ 
     GoogleContacts \
-    GoogleTTS \
+#    GoogleTTS \ 
     LatinIMEGooglePrebuilt \
     LocationHistoryPrebuilt \
     MarkupGoogle_v2 \
@@ -35,16 +35,16 @@ PRODUCT_PACKAGES += \
     PixelThemesStub2022_and_newer \
     PixelWallpapers2024 \
     PrebuiltDeskClockGoogle_76004981 \
-    PrebuiltGoogleAdservicesTvp \
-    PrebuiltGoogleTelemetryTvp \
+#    PrebuiltGoogleAdservicesTvp \
+#    PrebuiltGoogleTelemetryTvp \ 
     SoundAmplifierPrebuilt_v4.7.638126989 \
     SoundPickerPrebuilt \
     SwitchAccessPrebuilt_1.15.0.629986523 \
     TrichromeLibrary \
     TrichromeLibrary-Stub \
-    Tycho \
+#    Tycho \ 
     VoiceAccessPrebuilt \
-    WallpaperEmojiPrebuilt-v470 \
+#    WallpaperEmojiPrebuilt-v470 \ 
     WebViewGoogle \
     WebViewGoogle-Stub \
     arcore-1.42 \
@@ -83,14 +83,14 @@ PRODUCT_PACKAGES += \
     GoogleDialer \
     GoogleOneTimeInitializer \
     GoogleRestorePrebuilt-v526684 \
-    KidsSupervisionStub \
+#    KidsSupervisionStub \ 
     MaestroPrebuilt \
-    OdadPrebuilt \
+    OdadPrebuilt \ # play protect
     PartnerSetupPrebuilt \
     Phonesky \
     PixelAIPrebuilt \
     PixelLiveWallpaperPrebuilt \
-    PixelSupportPrebuilt \
+#    PixelSupportPrebuilt \ 
     PrebuiltBugle \
     RecorderPrebuilt_630544637 \
     SafetyHubSuwPrebuilt \
@@ -101,7 +101,7 @@ PRODUCT_PACKAGES += \
     TurboPrebuilt \
     Velvet \
     WallpaperEffect \
-    WeatherPixelPrebuilt \
+#    WeatherPixelPrebuilt \ 
     WellbeingPrebuilt
 
 # system/app
@@ -129,11 +129,11 @@ endif
 
 PRODUCT_PACKAGES += \
     AvatarPickerGoogle \
-    GoogleFeedback \
+    #GoogleFeedback \ 
     GoogleServicesFramework \
     NexusLauncherRelease \
     SetupWizardPixelPrebuilt \
-    QuickAccessWallet \
+    # QuickAccessWallet \ 
     StorageManagerGoogle \
     TurboAdapter \
     WallpaperPickerGoogleRelease
