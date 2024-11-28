@@ -16,20 +16,26 @@
 #
 #
 
+# Quick Tap
+PRODUCT_PACKAGES += \
+    quick_tap
+
 # product/app
 PRODUCT_PACKAGES += \
     CalculatorGooglePrebuilt_85005407 \
     Chrome \
     Chrome-Stub \
+    GeminiPrebuilt \
     GoogleContacts \
+    LatinIMEGooglePrebuilt \
     LocationHistoryPrebuilt \
     MarkupGoogle_v2 \
     NgaResources \
     Photos \
     PixelThemesStub \
     PixelThemesStub2022_and_newer \
-    PrebuiltDeskClockGoogle_76004981 \
-    SoundAmplifierPrebuilt_v4.7.638126989 \
+    PlayAutoInstallConfig \
+    PrebuiltDeskClockGoogle_76003530 \
     SoundPickerPrebuilt \
     TrichromeLibrary \
     TrichromeLibrary-Stub \
@@ -38,62 +44,77 @@ PRODUCT_PACKAGES += \
     arcore-1.42 \
     talkback
 
+ifneq ($(filter felix comet, $(LINEAGE_BUILD)),)
+PRODUCT_PACKAGES += \
+    PixelWallpapers2023Foldable
+endif
+
 # product/priv-app
-ifneq ($(filter sailfish marlin walleye taimen blueline crosshatch sargo bonito flame coral sunfish bramble redfin barbet oriole raven bluejay panther cheetah lynx tangorpro felix shiba husky akita tokay caiman komodo comet frankel blazer mustang, $(LINEAGE_BUILD)),)
 PRODUCT_PACKAGES += \
-    SCONE-v31427
-endif
-
-ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo frankel blazer mustang, $(LINEAGE_BUILD)),)
-PRODUCT_PACKAGES += \
-    DreamlinerDreamsPrebuilt_100894 \
-    DreamlinerPrebuilt_22000020 \
-    DreamlinerUpdater
-endif
-
-ifneq ($(filter husky akita tokay caiman komodo frankel blazer mustang, $(LINEAGE_BUILD)),)
-PRODUCT_PACKAGES += \
-    HealthIntelligencePrebuilt-1762
-endif
-
-PRODUCT_PACKAGES += \
-    AICorePrebuilt \
+    AICorePrebuilt-aicore_20240509.01_RC02 \
+    AdaptiveVPNPrebuilt-10307 \
     AmbientStreaming \
     AndroidAutoStubPrebuilt \
     BetterBugStub \
     CarrierLocation \
+    CarrierMetrics \
     CbrsNetworkMonitor \
     ConfigUpdater \
     CreativeAssistant \
-    DeviceIntelligenceNetworkPrebuilt-astrea_20240329.00_RC02 \
+    DeviceIntelligenceNetworkPrebuilt-U.21_playstore_astrea_20240222.00_RC01 \
+    DevicePersonalizationPrebuiltPixel2024-U.21_P24_aiai_20240327.00_RC01 \
+    FilesPrebuilt \
+    GCS \
     GoogleDialer \
     GoogleOneTimeInitializer \
-    GoogleRestorePrebuilt-v526684 \
+    GoogleRestorePrebuilt-v509024 \
+    MaestroPrebuilt \
     OdadPrebuilt \
     PartnerSetupPrebuilt \
     Phonesky \
     PixelAIPrebuilt \
     PixelLiveWallpaperPrebuilt \
     PrebuiltBugle \
-    SafetyHubSuwPrebuilt \
+    SafetyHubPrebuilt \
+    ScribePrebuilt \
     SearchSelectorPrebuilt \
     SettingsIntelligenceGooglePrebuilt \
     SetupWizardPrebuilt \
     TurboPrebuilt \
+    UvExposureReporter \
     Velvet \
     WallpaperEffect \
     WellbeingPrebuilt
 
+ifneq ($(filter flame coral redfin oriole raven panther cheetah lynx felix shiba husky akita tokay caiman komodo comet, $(LINEAGE_BUILD)),)
+PRODUCT_PACKAGES += \
+    DreamlinerPrebuilt \
+    DreamlinerUpdater
+endif
+
+ifneq ($(filter caiman komodo, $(LINEAGE_BUILD)),)
+PRODUCT_PACKAGES += \
+    HealthIntelligencePrebuilt-1762
+endif
+
+ifneq ($(filter shiba husky akita, $(LINEAGE_BUILD)),)
+PRODUCT_PACKAGES += \
+    HealthIntelligenceStubPrebuilt
+endif
+
+ifneq ($(filter blueline crosshatch sargo bonito flame coral sunfish bramble redfin barbet oriole raven bluejay panther cheetah lynx tangorpro felix shiba husky akita tokay caiman komodo comet, $(LINEAGE_BUILD)),)
+PRODUCT_PACKAGES += \
+    SCONE-v31427
+endif
+
 # system/app
 PRODUCT_PACKAGES += \
-    CaptivePortalLoginGoogle \
     GoogleExtShared \
     GooglePrintRecommendationService
 
 # system/priv-app
 PRODUCT_PACKAGES += \
-    DocumentsUIGoogle \
-    GooglePackageInstaller \
+    DocumentsUIGoogle
 
 # system_ext/app
 PRODUCT_PACKAGES += \
@@ -101,13 +122,7 @@ PRODUCT_PACKAGES += \
     Flipendo
 
 # system_ext/priv-app
-ifneq ($(filter sailfish marlin walleye taimen blueline crosshatch sargo bonito flame coral sunfish bramble redfin barbet oriole raven bluejay panther cheetah lynx tangorpro felix shiba husky akita tokay caiman komodo comet frankel blazer mustang, $(LINEAGE_BUILD)),)
 PRODUCT_PACKAGES += \
-    DeviceConnectivityServicePrebuilt_24.02.00
-endif
-
-PRODUCT_PACKAGES += \
-    AvatarPickerGoogle \
     GoogleServicesFramework \
     NexusLauncherRelease \
     SetupWizardPixelPrebuilt \
@@ -115,39 +130,25 @@ PRODUCT_PACKAGES += \
     TurboAdapter \
     WallpaperPickerGoogleRelease
 
+ifneq ($(filter tokay caiman komodo, $(LINEAGE_BUILD)),)
+PRODUCT_PACKAGES += \
+    VendorSatelliteService
+endif
+
 # PrebuiltGmsCore
 PRODUCT_PACKAGES += \
-    PrebuiltGmsCoreVic \
-    PrebuiltGmsCoreVic_AdsDynamite.uncompressed \
-    PrebuiltGmsCoreVic_CronetDynamite.uncompressed \
-    PrebuiltGmsCoreVic_DynamiteLoader.uncompressed \
-    PrebuiltGmsCoreVic_DynamiteModulesA.uncompressed  \
-    PrebuiltGmsCoreVic_DynamiteModulesC.uncompressed  \
-    PrebuiltGmsCoreVic_GoogleCertificates.uncompressed  \
-    PrebuiltGmsCoreVic_MapsDynamite.uncompressed  \
-    PrebuiltGmsCoreVic_MeasurementDynamite.uncompressed  \
+    PrebuiltGmsCoreSc \
+    PrebuiltGmsCoreSc_AdsDynamite.uncompressed \
+    PrebuiltGmsCoreSc_CronetDynamite.uncompressed \
+    PrebuiltGmsCoreSc_DynamiteLoader.uncompressed \
+    PrebuiltGmsCoreSc_DynamiteModulesA \
+    PrebuiltGmsCoreSc_DynamiteModulesC \
+    PrebuiltGmsCoreSc_GoogleCertificates \
+    PrebuiltGmsCoreSc_MapsDynamite \
+    PrebuiltGmsCoreSc_MeasurementDynamite \
     AndroidPlatformServices \
     MlkitBarcodeUIPrebuilt \
     VisionBarcodePrebuilt
-
-# Pixel Release Configuration
-ifeq ($(RELEASE_PIXEL_2021_ENABLED),true)
-PRODUCT_PACKAGES += \
-    DevicePersonalizationPrebuiltPixel2021-aiai_20240329.00_RC16
-else ifeq ($(RELEASE_PIXEL_2022_ENABLED),true)
-PRODUCT_PACKAGES += \
-    DevicePersonalizationPrebuiltPixel2022-aiai_20240329.00_RC16
-else ifeq ($(RELEASE_PIXEL_2023_ENABLED),true)
-PRODUCT_PACKAGES += \
-    DevicePersonalizationPrebuiltPixel2023-aiai_20240329.00_RC16
-else ifeq ($(RELEASE_PIXEL_2024_ENABLED),true)
-PRODUCT_PACKAGES += \
-    DevicePersonalizationPrebuiltPixel2024-aiai_20240329.00_RC16
-else
-# Fallback to the latest AiAi available
-PRODUCT_PACKAGES += \
-    DevicePersonalizationPrebuiltPixel2022-aiai_20240329.00_RC16
-endif
 
 # Safety Information
 #PRODUCT_PACKAGES += \
@@ -156,4 +157,3 @@ endif
 $(call inherit-product, vendor/gms/product/blobs/product_blobs.mk)
 $(call inherit-product, vendor/gms/system/blobs/system_blobs.mk)
 $(call inherit-product, vendor/gms/system_ext/blobs/system-ext_blobs.mk)
-
