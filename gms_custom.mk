@@ -26,24 +26,24 @@ PRODUCT_PACKAGES += \
 #    DevicePolicyPrebuilt-v10052480 \ 
     GoogleContacts \
 #    GoogleTTS \ 
-    LatinIMEGooglePrebuilt \
+#    LatinIMEGooglePrebuilt \ 
     LocationHistoryPrebuilt \
     MarkupGoogle_v2 \
     NgaResources \
     Photos \
     PixelThemesStub \
     PixelThemesStub2022_and_newer \
-    PixelWallpapers2024 \
+#    PixelWallpapers2024 \ 
     PrebuiltDeskClockGoogle_76004981 \
 #    PrebuiltGoogleAdservicesTvp \
 #    PrebuiltGoogleTelemetryTvp \ 
     SoundAmplifierPrebuilt_v4.7.638126989 \
     SoundPickerPrebuilt \
-    SwitchAccessPrebuilt_1.15.0.629986523 \
+#    SwitchAccessPrebuilt_1.15.0.629986523 \ 
     TrichromeLibrary \
     TrichromeLibrary-Stub \
 #    Tycho \ 
-    VoiceAccessPrebuilt \
+#    VoiceAccessPrebuilt \
 #    WallpaperEmojiPrebuilt-v470 \ 
     WebViewGoogle \
     WebViewGoogle-Stub \
@@ -70,7 +70,7 @@ endif
 
 PRODUCT_PACKAGES += \
     AICorePrebuilt \
-    AiWallpapers \
+#    AiWallpapers \  
     AmbientStreaming \
     AndroidAutoStubPrebuilt \
     BetterBugStub \
@@ -79,12 +79,12 @@ PRODUCT_PACKAGES += \
     ConfigUpdater \
     CreativeAssistant \
     DeviceIntelligenceNetworkPrebuilt-astrea_20240329.00_RC02 \
-    FilesPrebuilt \
+#    FilesPrebuilt \ 
     GoogleDialer \
     GoogleOneTimeInitializer \
     GoogleRestorePrebuilt-v526684 \
 #    KidsSupervisionStub \ 
-    MaestroPrebuilt \
+#    MaestroPrebuilt \ 
     OdadPrebuilt \ # play protect
     PartnerSetupPrebuilt \
     Phonesky \
@@ -92,9 +92,9 @@ PRODUCT_PACKAGES += \
     PixelLiveWallpaperPrebuilt \
 #    PixelSupportPrebuilt \ 
     PrebuiltBugle \
-    RecorderPrebuilt_630544637 \
+#    RecorderPrebuilt_630544637 \ 
     SafetyHubSuwPrebuilt \
-    ScribePrebuilt_v7.0.633113815 \
+#    ScribePrebuilt_v7.0.633113815 \ 
     SearchSelectorPrebuilt \
     SettingsIntelligenceGooglePrebuilt \
     SetupWizardPrebuilt \
@@ -114,7 +114,7 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     DocumentsUIGoogle \
     GooglePackageInstaller \
-    TagGoogle
+    # TagGoogle
 
 # system_ext/app
 PRODUCT_PACKAGES += \
