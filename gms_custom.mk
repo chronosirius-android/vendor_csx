@@ -23,6 +23,7 @@ PRODUCT_PACKAGES += \
 # product/app
 PRODUCT_PACKAGES += \
     CalculatorGooglePrebuilt_85005407 \
+    CalendarGooglePrebuilt \
     Chrome \
     Chrome-Stub \
     GeminiPrebuilt \
@@ -75,6 +76,7 @@ PRODUCT_PACKAGES += \
     PixelAIPrebuilt \
     PixelLiveWallpaperPrebuilt \
     PrebuiltBugle \
+    RecorderPrebuilt \
     SafetyHubPrebuilt \
     ScribePrebuilt \
     SearchSelectorPrebuilt \
