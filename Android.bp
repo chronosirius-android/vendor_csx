@@ -1,2 +1,20 @@
 soong_namespace {
 }
+
+/*cc_prebuilt_binary {
+    name: "owl",
+    srcs: [
+	"owl/owl",
+	"owl/owla",
+    ],
+    device_specific: true,
+}
+
+cc_prebuilt_library_shared {
+    name: "owl_deps",
+    srcs: [
+	"owl/lib*",
+    ],
+    device_specific: true,
+}*/
+

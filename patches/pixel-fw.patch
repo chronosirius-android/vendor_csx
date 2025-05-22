@@ -1,0 +1,19 @@
+diff --git a/SettingsGoogle/res/xml/columbus_settings.xml b/SettingsGoogle/res/xml/columbus_settings.xml
+index 2e80b71..51ede5b 100644
+--- a/SettingsGoogle/res/xml/columbus_settings.xml
++++ b/SettingsGoogle/res/xml/columbus_settings.xml
+@@ -11,12 +11,12 @@
+     <com.android.settingslib.widget.MainSwitchPreference
+         android:key="columbus_enabled_switch"
+         android:title="@string/columbus_setting_enable_switch_title"
+-        settings:controller="com.google.android.settings.gestures.columbus.ColumbusEnabledPreferenceController" />
++        settings:controller="com.google.android.settings.gestures.columbus.ColumbusEnabledPreferenceControllerPublic" />
+ 
+     <PreferenceCategory
+         android:key="columbus_action_category"
+         android:title="@string/columbus_setting_actions_title"
+-        settings:controller="com.google.android.settings.gestures.columbus.ColumbusActionsPreferenceController" />
++        settings:controller="com.google.android.settings.gestures.columbus.ColumbusActionsPreferenceControllerPublic" />
+ 
+     <PreferenceCategory
+         android:key="columbus_sensitivity_category"
