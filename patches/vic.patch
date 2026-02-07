@@ -1,0 +1,487 @@
+
+project bionic/
+diff --git a/libc/include/netinet/if_ether.h b/libc/include/netinet/if_ether.h
+index b1b9ed0fe..21a3da983 100644
+--- a/libc/include/netinet/if_ether.h
++++ b/libc/include/netinet/if_ether.h
+@@ -37,7 +37,7 @@
+ #include <sys/cdefs.h>
+ #include <sys/types.h>
+ 
+-#if defined(__USE_BSD)
++//#if defined(__USE_BSD)
+ 
+ /* pull in Ethernet-specific definitions and packet structures */
+ 
+@@ -105,6 +105,6 @@ struct	ether_arp {
+ 	(enaddr)[5] = ((u_int8_t *)ip6addr)[15];			\
+ }
+ 
+-#endif /* __USE_BSD */
++//#endif /* __USE_BSD /
+ 
+ #endif /* !_NET_IF_ETHER_H_ */
+
+project device/oneplus/lemonadep/
+diff --git a/device.mk b/device.mk
+index 6dbeffd..b69dce7 100644
+--- a/device.mk
++++ b/device.mk
+@@ -13,6 +13,9 @@ PRODUCT_PACKAGES += \
+     KeyHandler \
+     tri-state-key-calibrate
+ 
++# Make sure it uses smaller gapps
++# TARGET_USES_CUSTOM_GAPPS := true
++
+ # Audio
+ PRODUCT_COPY_FILES += \
+     $(LOCAL_PATH)/audio/audio_platform_info_intcodec.xml:$(TARGET_COPY_OUT_ODM)/etc/audio_platform_info.xml \
+@@ -76,5 +79,8 @@ PRODUCT_SOONG_NAMESPACES += \
+ # Inherit from the common OEM chipset makefile.
+ $(call inherit-product, device/oneplus/sm8350-common/common.mk)
+ 
++# Add 1+ cameras
++# $(call inherit-product, vendor/oplus/camera/opluscamera.mk)
++
+ # Inherit from the proprietary files makefile.
+ $(call inherit-product, vendor/oneplus/lemonadep/lemonadep-vendor.mk)
+diff --git a/lineage_lemonadep.mk b/lineage_lemonadep.mk
+index f92309c..994e449 100644
+--- a/lineage_lemonadep.mk
++++ b/lineage_lemonadep.mk
+@@ -30,3 +30,5 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
+     DeviceProduct=OnePlus9Pro \
+     SystemDevice=OnePlus9Pro \
+     SystemName=OnePlus9Pro
++
++TARGET_INCLUDE_ACCORD=false
+
+project device/oneplus/sm8350-common/
+diff --git a/BoardConfigCommon.mk b/BoardConfigCommon.mk
+index bee743a..3a2f45c 100644
+--- a/BoardConfigCommon.mk
++++ b/BoardConfigCommon.mk
+@@ -33,7 +33,7 @@ TARGET_CPU_ABI := arm64-v8a
+ TARGET_CPU_VARIANT := cortex-a76
+ 
+ TARGET_2ND_ARCH := arm
+-TARGET_2ND_ARCH_VARIANT := armv8-a
++TARGET_2ND_ARCH_VARIANT := armv8-2a
+ TARGET_2ND_CPU_ABI := armeabi-v7a
+ TARGET_2ND_CPU_ABI2 := armeabi
+ TARGET_2ND_CPU_VARIANT := cortex-a76
+@@ -97,8 +97,15 @@ BOARD_KERNEL_PAGESIZE := 4096
+ BOARD_KERNEL_SEPARATED_DTBO := true
+ BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
+ BOARD_RAMDISK_USE_LZ4 := true
++ifeq ($(MAINLINE_BUILD),true)
++TARGET_KERNEL_SOURCE := kernel/oneplus/msm
++TARGET_KERNEL_CONFIG := gki_defconfig
++#PRODUCT_SOONG_NAMESPACES += kernel/oneplus/mainline
++else 
+ TARGET_KERNEL_SOURCE := kernel/oneplus/sm8350
+-TARGET_KERNEL_CONFIG := vendor/lahaina-qgki_defconfig
++#TARGET_KERNEL_CONFIG := vendor/lahaina-qgki_defconfig
++TARGET_KERNEL_CONFIG := nethunter_defconfig
++endif
+ TARGET_KERNEL_NO_GCC := true
+ 
+ # Kernel modules
+
+project external/libnl/
+diff --git a/Android.bp b/Android.bp
+index 9f8e3ee..87c1bc7 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -79,7 +79,17 @@ cc_library {
+         "lib/route/route_obj.c",
+         "lib/route/route_utils.c",
+         "lib/route/rtnl.c",
++	"lib/route/neigh.c"
+     ],
++/*
++    srcs: [
++	"lib/*.c",
++	"lib/fib_lookup/*.c",
++	"lib/genl/*.c",
++	"lib/netfilter/*.c",
++	"lib/route/*.c",
++	"lib/route/link/*.c",
++    ],*/
+ 
+     local_include_dirs: [
+         "include",
+
+project frameworks/base/
+diff --git a/core/java/com/android/internal/policy/GestureNavigationSettingsObserver.java b/core/java/com/android/internal/policy/GestureNavigationSettingsObserver.java
+index a7b441bc4743..05501cadbf29 100644
+--- a/core/java/com/android/internal/policy/GestureNavigationSettingsObserver.java
++++ b/core/java/com/android/internal/policy/GestureNavigationSettingsObserver.java
+@@ -123,6 +123,12 @@ public class GestureNavigationSettingsObserver extends ContentObserver {
+     @Override
+     public void onChange(boolean selfChange) {
+         super.onChange(selfChange);
++        // if (Settings.System.LOCK_GESTURE_STATUS.equals(true)) {
++        //     Settings.Secure.putIntForUser(mContext.getContentResolver(), "columbus_enabled", 0, UserHandle.USER_CURRENT);
++        // } else if (Settings.System.LOCK_GESTURE_STATUS.equals(false) &&
++        //         Settings.Secure.getIntForUser(mContext.getContentResolver(), "recover_columbus", 0, UserHandle.USER_CURRENT) == 1) {
++        //     Settings.Secure.putIntForUser(mContext.getContentResolver(), "columbus_enabled", 1, UserHandle.USER_CURRENT);
++        // }
+         if (mOnChangeRunnable != null) {
+             mOnChangeRunnable.run();
+         }
+diff --git a/packages/SystemUI/AndroidManifest.xml b/packages/SystemUI/AndroidManifest.xml
+index 3bae152e6c16..d5e2a89e1de1 100644
+--- a/packages/SystemUI/AndroidManifest.xml
++++ b/packages/SystemUI/AndroidManifest.xml
+@@ -1180,6 +1180,24 @@
+                 <action android:name="com.android.systemui.action.LAUNCH_REMOVE_EXTRA_DIM_DIALOG" />
+             </intent-filter>
+         </receiver>
++        
++        <receiver android:name=".power.LowBatteryDialogReceiver"
++            android:exported="true">
++            <intent-filter>
++                <action android:name="com.android.systemui.action.DIAG_BATTERY_LOW" />
++            </intent-filter>
++        </receiver>
++
++        <activity android:name=".power.LowBatteryWarningActivity"
++                    android:exported="true"
++                    android:theme="@style/Theme.SystemUI.Dialog.Alert"
++                    android:excludeFromRecents="true"
++                    android:finishOnCloseSystemDialogs="true">
++                <intent-filter>
++                    <action android:name="com.android.systemui.action.DIAG_BATTERY_LOW" />
++                    <category android:name="android.intent.category.DEFAULT" />
++                </intent-filter>
++        </activity>
+ 
+         <activity android:name=".logcat.LogAccessDialogActivity"
+                   android:theme="@android:style/Theme.Translucent.NoTitleBar"
+diff --git a/packages/SystemUI/res/values/strings.xml b/packages/SystemUI/res/values/strings.xml
+index 2551e0e6bbff..5218fbe63d99 100644
+--- a/packages/SystemUI/res/values/strings.xml
++++ b/packages/SystemUI/res/values/strings.xml
+@@ -29,6 +29,10 @@
+     <!-- When the battery is low at first time, this is displayed to the user in a dialog.  The description of the low battery alert.  [CHAR LIMIT=NONE]-->
+     <string name="battery_low_intro">Battery Saver turns on Dark theme, restricts background activity, and delays notifications.</string>
+ 
++    <string name="battery_low_warning_title">Battery Low</string>
++    <string name="battery_low_warning_message">Your battery is below 10%. Please plug your phone into charging.</string>
++    <string name="battery_low_warning_close">Ok</string>
++
+     <!-- A message that appears when the battery level is getting low in a dialog.  This is
+         appended to the subtitle of the low battery alert.  "percentage" is the percentage of battery
+         remaining [CHAR LIMIT=none]-->
+diff --git a/services/core/java/com/android/server/BatteryService.java b/services/core/java/com/android/server/BatteryService.java
+index db6a95fb830b..51a063f3840b 100644
+--- a/services/core/java/com/android/server/BatteryService.java
++++ b/services/core/java/com/android/server/BatteryService.java
+@@ -6,7 +6,7 @@
+  * You may obtain a copy of the License at
+  *
+  *      http://www.apache.org/licenses/LICENSE-2.0
+- *
++ *   
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+@@ -795,6 +795,14 @@ public final class BatteryService extends SystemService {
+         }
+     }
+ 
++    private void displayDialogIfBatteryNonCriticallyLow() {
++        if (mHealthInfo.batteryLevel == 10) {
++            Intent intent = new Intent("com.android.systemui.action.DIAG_BATTERY_LOW");
++            intent.setPackage(sSystemUiPackage);
++            mContext.sendBroadcastAsUser(intent, UserHandle.CURRENT);
++        }
++    }
++
+     private void processValuesLocked(boolean force) {
+         boolean logOutlier = false;
+         long dischargeDuration = 0;
+@@ -829,6 +837,7 @@ public final class BatteryService extends SystemService {
+ 
+         shutdownIfNoPowerLocked();
+         shutdownIfOverTempLocked();
++        displayDialogIfBatteryNonCriticallyLow();
+ 
+         mOemCharger = mHasOemCharger && isOemCharger();
+ 
+
+project hardware/oplus/
+diff --git a/KeyHandler/src/org/lineageos/settings/device/KeyHandler.kt b/KeyHandler/src/org/lineageos/settings/device/KeyHandler.kt
+index 795c421..56d6cd5 100644
+--- a/KeyHandler/src/org/lineageos/settings/device/KeyHandler.kt
++++ b/KeyHandler/src/org/lineageos/settings/device/KeyHandler.kt
+@@ -134,7 +134,7 @@ class KeyHandler(context: Context) : DeviceKeyHandler {
+ 
+         // Wait until zen mode change is committed
+         while (notificationManager.zenMode != zenMode) {
+-            Thread.sleep(10)
++            Thread.sleep(75)
+         }
+     }
+ 
+
+project kernel/oneplus/sm8350/
+diff --git a/arch/arm64/configs/nethunter_defconfig b/arch/arm64/configs/nethunter_defconfig
+index 1313f4cd450a..0792726a06db 100644
+--- a/arch/arm64/configs/nethunter_defconfig
++++ b/arch/arm64/configs/nethunter_defconfig
+@@ -1,3 +1,4 @@
++CONFIG_UAPI_HEADER_TEST=y
+ CONFIG_LOCALVERSION="-qgki"
+ CONFIG_AUDIT=y
+ CONFIG_PRINT_SUSPEND_EPOCH_QGKI=y
+@@ -42,6 +43,7 @@ CONFIG_BLK_DEV_INITRD=y
+ CONFIG_KALLSYMS_ALL=y
+ CONFIG_BPF_SYSCALL=y
+ CONFIG_BPF_JIT_ALWAYS_ON=y
++CONFIG_USERFAULTFD=y
+ # CONFIG_RSEQ is not set
+ CONFIG_EMBEDDED=y
+ CONFIG_PERF_KERNEL_SHARE=y
+@@ -128,6 +130,7 @@ CONFIG_PACKET=y
+ CONFIG_UNIX=y
+ CONFIG_XFRM_USER=y
+ CONFIG_XFRM_INTERFACE=y
++CONFIG_XFRM_MIGRATE=y
+ CONFIG_XFRM_STATISTICS=y
+ CONFIG_NET_KEY=y
+ CONFIG_XDP_SOCKETS=y
+@@ -242,9 +245,12 @@ CONFIG_NET_SCH_INGRESS=y
+ CONFIG_NET_CLS_FW=y
+ CONFIG_NET_CLS_U32=y
+ CONFIG_NET_CLS_BPF=y
++CONFIG_NET_CLS_MATCHALL=y
+ CONFIG_NET_EMATCH=y
+ CONFIG_NET_EMATCH_U32=y
+ CONFIG_NET_CLS_ACT=y
++CONFIG_NET_ACT_POLICE=y
++CONFIG_NET_ACT_BPF=y
+ CONFIG_QRTR=y
+ CONFIG_QRTR_SMD=y
+ CONFIG_QRTR_MHI=y
+@@ -349,13 +355,15 @@ CONFIG_PPP_DEFLATE=y
+ CONFIG_PPP_MPPE=y
+ CONFIG_PPTP=y
+ CONFIG_PPPOL2TP=y
++CONFIG_USB_RTL8150=y
+ CONFIG_USB_RTL8152=y
+ CONFIG_USB_LAN78XX=y
+ CONFIG_USB_USBNET=y
+-# CONFIG_USB_NET_CDC_NCM is not set
++CONFIG_USB_NET_CDC_EEM=y
+ # CONFIG_USB_NET_NET1080 is not set
+ # CONFIG_USB_NET_CDC_SUBSET is not set
+ # CONFIG_USB_NET_ZAURUS is not set
++CONFIG_USB_NET_AQC111=y
+ # CONFIG_WLAN_VENDOR_ADMTEK is not set
+ # CONFIG_WLAN_VENDOR_ATH is not set
+ # CONFIG_WLAN_VENDOR_ATMEL is not set
+@@ -419,6 +427,7 @@ CONFIG_SERIAL_8250=y
+ CONFIG_SERIAL_8250_CONSOLE=y
+ # CONFIG_SERIAL_8250_EXAR is not set
+ CONFIG_SERIAL_8250_RUNTIME_UARTS=0
++CONFIG_SERIAL_8250_DW=y
+ CONFIG_SERIAL_OF_PLATFORM=y
+ CONFIG_SERIAL_AMBA_PL011=y
+ CONFIG_SERIAL_AMBA_PL011_CONSOLE=y
+@@ -597,11 +606,13 @@ CONFIG_USB_CONFIGFS_F_AUDIO_SRC=y
+ CONFIG_USB_CONFIGFS_F_UAC2=y
+ CONFIG_USB_CONFIGFS_F_MIDI=y
+ CONFIG_USB_CONFIGFS_F_HID=y
++CONFIG_USB_CONFIGFS_F_UVC=y
+ CONFIG_USB_CONFIGFS_F_DIAG=y
+ CONFIG_USB_CONFIGFS_F_QDSS=y
+ CONFIG_USB_CONFIGFS_F_CCID=y
+ CONFIG_USB_CONFIGFS_F_CDEV=y
+ CONFIG_USB_CONFIGFS_F_GSI=y
++CONFIG_USB_G_WEBCAM=m
+ CONFIG_TYPEC=y
+ CONFIG_TYPEC_TCPM=y
+ CONFIG_TYPEC_UCSI=y
+@@ -920,7 +931,9 @@ CONFIG_STATIC_USERMODEHELPER=y
+ CONFIG_STATIC_USERMODEHELPER_PATH=""
+ CONFIG_SECURITY_SELINUX=y
+ CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y
++CONFIG_CRYPTO_CHACHA20POLY1305=y
+ CONFIG_CRYPTO_ADIANTUM=y
++CONFIG_CRYPTO_XCBC=y
+ CONFIG_CRYPTO_BLAKE2B=y
+ CONFIG_CRYPTO_LZ4=y
+ CONFIG_CRYPTO_ZSTD=y
+
+project packages/apps/ColumbusService/
+diff --git a/src/org/protonaosp/columbus/ColumbusService.kt b/src/org/protonaosp/columbus/ColumbusService.kt
+index 30af0cb..a561ff5 100644
+--- a/src/org/protonaosp/columbus/ColumbusService.kt
++++ b/src/org/protonaosp/columbus/ColumbusService.kt
+@@ -278,6 +278,14 @@ class ColumbusService : Service(), SharedPreferences.OnSharedPreferenceChangeLis
+             if (settingsGate.isBlocking() && settingsGate.handleGesture()) {
+                 return
+             }
++
++            if (android.provider.Settings.System.getInt(
++                contentResolver,
++                android.provider.Settings.System.LOCK_GESTURE_STATUS
++            ) == 1) {
++                return
++            }
++
+             action.run()
+         } finally {
+             if (wakelock.isHeld) {
+
+project packages/modules/Bluetooth/
+diff --git a/android/app/jni/com_android_bluetooth_gatt.cpp b/android/app/jni/com_android_bluetooth_gatt.cpp
+index 8f5c5421eb..7790e21cb1 100644
+--- a/android/app/jni/com_android_bluetooth_gatt.cpp
++++ b/android/app/jni/com_android_bluetooth_gatt.cpp
+@@ -2375,7 +2375,7 @@ static uint32_t INTERVAL_MAX = 0xFFFFFF;
+ static uint32_t INTERVAL_DELTA = 50;
+ 
+ static AdvertiseParameters parseParams(JNIEnv* env, jobject i) {
+-  log::debug("parseParams: {}", i);
++  // log::debug("parseParams: {}", i);
+   AdvertiseParameters p;
+ 
+   jclass clazz = env->GetObjectClass(i);
+@@ -2454,7 +2454,7 @@ static AdvertiseParameters parseParams(JNIEnv* env, jobject i) {
+   p.peer_address = str2addr(env, peerAddress);
+   p.peer_address_type = peerAddressType;
+   p.discoverable = isDiscoverable;
+-  log::debug("parseParams AdvertiseParams: {}", p);
++  log::debug("parseParams AdvertiseParams: advertising_event_properties: {}", p.advertising_event_properties);
+   return p;
+ }
+ 
+diff --git a/framework/api/current.txt b/framework/api/current.txt
+index 8ee8e08f2b..d76d9ae922 100644
+--- a/framework/api/current.txt
++++ b/framework/api/current.txt
+@@ -1274,6 +1274,7 @@ package android.bluetooth.le {
+     method public int getPrimaryPhy();
+     method public int getSecondaryPhy();
+     method public int getTxPowerLevel();
++    method public int getTxPowerSpoofLevel();
+     method public boolean includeTxPower();
+     method public boolean isAnonymous();
+     method public boolean isConnectable();
+@@ -1308,6 +1309,7 @@ package android.bluetooth.le {
+     method public android.bluetooth.le.AdvertisingSetParameters.Builder setScannable(boolean);
+     method public android.bluetooth.le.AdvertisingSetParameters.Builder setSecondaryPhy(int);
+     method public android.bluetooth.le.AdvertisingSetParameters.Builder setTxPowerLevel(int);
++    method public android.bluetooth.le.AdvertisingSetParameters.Builder setTxPowerSpoof(int);
+   }
+ 
+   public final class BluetoothLeAdvertiser {
+diff --git a/framework/api/lint-baseline.txt b/framework/api/lint-baseline.txt
+index 5e5e511354..7c6ddf02ac 100644
+--- a/framework/api/lint-baseline.txt
++++ b/framework/api/lint-baseline.txt
+@@ -29,3 +29,17 @@ BroadcastBehavior: android.bluetooth.BluetoothDevice#ACTION_PAIRING_REQUEST:
+     Field 'ACTION_PAIRING_REQUEST' is missing @BroadcastBehavior
+ BroadcastBehavior: android.bluetooth.BluetoothDevice#ACTION_UUID:
+     Field 'ACTION_UUID' is missing @BroadcastBehavior
++
++
++MissingGetterMatchingBuilder: android.bluetooth.le.AdvertisingSetParameters.Builder#setTxPowerSpoof(int):
++    android.bluetooth.le.AdvertisingSetParameters does not declare a `getTxPowerSpoof()` method matching method android.bluetooth.le.AdvertisingSetParameters.Builder.setTxPowerSpoof(int)
++
++
++MissingNullability: android.bluetooth.le.AdvertisingSetParameters.Builder#setTxPowerSpoof(int):
++    Missing nullability on method `setTxPowerSpoof` return
++
++
++UnflaggedApi: android.bluetooth.le.AdvertisingSetParameters#getTxPowerSpoofLevel():
++    New API must be flagged with @FlaggedApi: method android.bluetooth.le.AdvertisingSetParameters.getTxPowerSpoofLevel()
++UnflaggedApi: android.bluetooth.le.AdvertisingSetParameters.Builder#setTxPowerSpoof(int):
++    New API must be flagged with @FlaggedApi: method android.bluetooth.le.AdvertisingSetParameters.Builder.setTxPowerSpoof(int)
+diff --git a/system/gd/hci/le_advertising_manager.cc b/system/gd/hci/le_advertising_manager.cc
+index 7191561d68..8e283481a0 100644
+--- a/system/gd/hci/le_advertising_manager.cc
++++ b/system/gd/hci/le_advertising_manager.cc
+@@ -895,7 +895,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+   }
+ 
+   void set_parameters(AdvertiserId advertiser_id, AdvertisingConfig config) {
+-    log::info("set_parameters: advertiser_id: {}, config: {}", advertiser_id, config.to_string());
++    log::info("set_parameters: advertiser_id: {}", advertiser_id);
+     config.tx_power = get_tx_power_after_calibration(static_cast<int8_t>(config.tx_power));
+     config.tx_power_spoof_level = get_tx_power_after_calibration(
+             static_cast<int8_t>(config.tx_power_spoof_level));
+@@ -998,7 +998,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+           extended_properties.anonymous_ = config.anonymous;
+           extended_properties.tx_power_ = config.include_tx_power;
+ 
+-          log::info("set_parameters: Extended properties: {}", extended_properties);
++          //log::info("set_parameters: Extended properties: {}", extended_properties);
+           log::info("set_parameters: Extended, interval_min: {}, interval_max: {}",
+                     config.interval_min, config.interval_max);
+           log::info("set_parameters: Extended, channel_map: {}, own_address_type: {}",
+@@ -1088,8 +1088,8 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+   }
+ 
+   void set_data(AdvertiserId advertiser_id, bool set_scan_rsp, std::vector<GapData> data) {
+-    log::info("set_data: advertiser_id: {}, set_scan_rsp: {}, data: {}", advertiser_id,
+-              set_scan_rsp, data);
++    log::info("set_data: advertiser_id: {}, set_scan_rsp: {}", advertiser_id,
++              set_scan_rsp);
+     // The Flags data type shall be included when any of the Flag bits are non-zero and the
+     // advertising packet is connectable and discoverable.
+     if (!set_scan_rsp && advertising_sets_[advertiser_id].connectable &&
+@@ -1107,7 +1107,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+     // Find and fill TX Power with the correct value.
+     // TODO: CHANGE THIS TO USE THE SPOOFED TX POWER IF APPLICABLE (!!!!!)
+     for (auto& gap_data : data) {
+-      log::info("set_data: for gap_data: {}", gap_data.to_string());
++      log::info("set_data: for gap_data: {}", gap_data.ToString());
+       if (gap_data.data_type_ == GapDataType::TX_POWER_LEVEL) {
+         log::info("set_data: found TX Power - need to update this for spoofing later");
+         gap_data.data_[0] = advertising_sets_[advertiser_id].tx_power_spoof_level;
+diff --git a/system/main/shim/le_advertising_manager.cc b/system/main/shim/le_advertising_manager.cc
+index 1cf0a9e6ad..158e95e89b 100644
+--- a/system/main/shim/le_advertising_manager.cc
++++ b/system/main/shim/le_advertising_manager.cc
+@@ -154,7 +154,7 @@ public:
+                            uint8_t maxExtAdvEvents,
+                            ::BleAdvertiserInterface::IdStatusCallback /* timeout_cb */) override {
+     log::info("in shim layer");
+-    log::info("in shim layer, StartAdvertisingSet")
++    log::info("in shim layer, StartAdvertisingSet");
+ 
+     bluetooth::hci::AdvertisingConfig config{};
+     parse_parameter(config, params);
+
+project vendor/oneplus/lemonadep/
+diff --git a/proprietary/vendor/etc/libnfc-nci.conf b/proprietary/vendor/etc/libnfc-nci.conf
+index 5d6cb10..92f76b3 100644
+--- a/proprietary/vendor/etc/libnfc-nci.conf
++++ b/proprietary/vendor/etc/libnfc-nci.conf
+@@ -1,7 +1,7 @@
+ ########################## Start of libnfc-nci.conf ###########################
+ ###############################################################################
+ # Application options
+-NFC_DEBUG_ENABLED=0
++NFC_DEBUG_ENABLED=1
+ ###############################################################################
+ # performance measurement
+ # Change this setting to control how often USERIAL log the performance (throughput)
+
+project vendor/oneplus/sm8350-common/
+diff --git a/sm8350-common-vendor.mk b/sm8350-common-vendor.mk
+index e258d6c..95211ad 100644
+--- a/sm8350-common-vendor.mk
++++ b/sm8350-common-vendor.mk
+@@ -1431,3 +1431,6 @@ PRODUCT_PACKAGES += \
+ 
+ PRODUCT_BOOT_JARS += \
+     WfdCommon
++
++#add nethunter firmwares
++$(call inherit-product, vendor/csx/nethunter.mk)

@@ -1,0 +1,340 @@
+diff --git a/android/app/jni/com_android_bluetooth_gatt.cpp b/android/app/jni/com_android_bluetooth_gatt.cpp
+index 15e0c17b78..899d601071 100644
+--- a/android/app/jni/com_android_bluetooth_gatt.cpp
++++ b/android/app/jni/com_android_bluetooth_gatt.cpp
+@@ -2220,6 +2220,7 @@ static uint32_t INTERVAL_MAX = 0xFFFFFF;
+ static uint32_t INTERVAL_DELTA = 50;
+ 
+ static AdvertiseParameters parseParams(JNIEnv* env, jobject i) {
++  log::debug("parseParams: {}", i);
+   AdvertiseParameters p;
+ 
+   jclass clazz = env->GetObjectClass(i);
+@@ -2245,6 +2246,8 @@ static AdvertiseParameters parseParams(JNIEnv* env, jobject i) {
+   uint32_t interval = env->CallIntMethod(i, methodId);
+   methodId = env->GetMethodID(clazz, "getTxPowerLevel", "()I");
+   int8_t txPowerLevel = env->CallIntMethod(i, methodId);
++  methodId = env->GetMethodID(clazz, "getTxPowerSpoofLevel", "()I");
++  int8_t txPowerSpoofLevel = env->CallIntMethod(i, methodId);
+   methodId = env->GetMethodID(clazz, "getOwnAddressType", "()I");
+   int8_t ownAddressType = env->CallIntMethod(i, methodId);
+ 
+@@ -2277,10 +2280,12 @@ static AdvertiseParameters parseParams(JNIEnv* env, jobject i) {
+   p.max_interval = interval + INTERVAL_DELTA;
+   p.channel_map = 0x07; /* all channels */
+   p.tx_power = txPowerLevel;
++  p.tx_power_spoof_level = txPowerSpoofLevel;
+   p.primary_advertising_phy = primaryPhy;
+   p.secondary_advertising_phy = secondaryPhy;
+   p.scan_request_notification_enable = false;
+   p.own_address_type = ownAddressType;
++  log::debug("parseParams AdvertiseParams: {}", p);
+   return p;
+ }
+ 
+diff --git a/framework/java/android/bluetooth/le/AdvertisingSetParameters.java b/framework/java/android/bluetooth/le/AdvertisingSetParameters.java
+index e614109299..04cc5ef6f9 100644
+--- a/framework/java/android/bluetooth/le/AdvertisingSetParameters.java
++++ b/framework/java/android/bluetooth/le/AdvertisingSetParameters.java
+@@ -133,6 +133,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+     private final int mInterval;
+     private final int mTxPowerLevel;
+     private final int mOwnAddressType;
++    private final int mTxPowerSpoofLevel;
+ 
+     private AdvertisingSetParameters(
+             boolean connectable,
+@@ -145,6 +146,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+             int secondaryPhy,
+             int interval,
+             int txPowerLevel,
++            int txPowerSpoofLevel,
+             @AddressTypeStatus int ownAddressType) {
+         mConnectable = connectable;
+         mDiscoverable = discoverable;
+@@ -156,6 +158,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+         mSecondaryPhy = secondaryPhy;
+         mInterval = interval;
+         mTxPowerLevel = txPowerLevel;
++        mTxPowerSpoofLevel = txPowerSpoofLevel;
+         mOwnAddressType = ownAddressType;
+     }
+ 
+@@ -169,6 +172,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+         mSecondaryPhy = in.readInt();
+         mInterval = in.readInt();
+         mTxPowerLevel = in.readInt();
++        mTxPowerSpoofLevel = in.readInt();
+         mOwnAddressType = in.readInt();
+         mDiscoverable = in.readInt() != 0;
+     }
+@@ -223,6 +227,11 @@ public final class AdvertisingSetParameters implements Parcelable {
+         return mTxPowerLevel;
+     }
+ 
++    /** Returns the TX power level to be shown in the extended header. */
++    public int getTxPowerSpoofLevel() {
++        return mTxPowerSpoofLevel;
++    }
++
+     /**
+      * @return the own address type for advertising
+      * @hide
+@@ -252,6 +261,8 @@ public final class AdvertisingSetParameters implements Parcelable {
+                 + mInterval
+                 + ", txPowerLevel="
+                 + mTxPowerLevel
++                + ", txPowerSpoofLevel="
++                + mTxPowerSpoofLevel
+                 + ", ownAddressType="
+                 + mOwnAddressType
+                 + "]";
+@@ -273,6 +284,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+         dest.writeInt(mSecondaryPhy);
+         dest.writeInt(mInterval);
+         dest.writeInt(mTxPowerLevel);
++        dest.writeInt(mTxPowerSpoofLevel);
+         dest.writeInt(mOwnAddressType);
+         dest.writeInt(mDiscoverable ? 1 : 0);
+     }
+@@ -303,6 +315,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+         private int mSecondaryPhy = BluetoothDevice.PHY_LE_1M;
+         private int mInterval = INTERVAL_LOW;
+         private int mTxPowerLevel = TX_POWER_MEDIUM;
++        private int mTxPowerSpoofLevel = TX_POWER_MEDIUM;
+         private int mOwnAddressType = ADDRESS_TYPE_DEFAULT;
+ 
+         /**
+@@ -458,6 +471,28 @@ public final class AdvertisingSetParameters implements Parcelable {
+                 throw new IllegalArgumentException("unknown txPowerLevel " + txPowerLevel);
+             }
+             mTxPowerLevel = txPowerLevel;
++            mTxPowerSpoofLevel = txPowerLevel;
++            return this;
++        }
++
++        /**
++         * Set what TX power level should be shown in the extended header. 
++         * ! THIS MUST BE CALLED AFTER setTxPowerLevel OR CHANGES DO NOT GET SAVED.
++         * 
++         * @param txPowerSpoofLevel Transmission power of Bluetooth LE Advertising, in dBm. The valid
++         *     range is [-127, 1] Recommended values are: {@link
++         *     AdvertisingSetParameters#TX_POWER_ULTRA_LOW}, {@link
++         *     AdvertisingSetParameters#TX_POWER_LOW}, {@link
++         *     AdvertisingSetParameters#TX_POWER_MEDIUM}, or {@link
++         *     AdvertisingSetParameters#TX_POWER_HIGH}.
++         * @throws IllegalArgumentException If the {@code txPowerSpoofLevel} is invalid.
++         */
++
++        public Builder setTxPowerSpoof(int txPowerSpoofLevel) {
++            if (txPowerSpoofLevel < TX_POWER_MIN || txPowerSpoofLevel > TX_POWER_MAX) {
++                throw new IllegalArgumentException("unknown txPowerSpoofLevel " + txPowerSpoofLevel);
++            }
++            mTxPowerSpoofLevel = txPowerSpoofLevel;
+             return this;
+         }
+ 
+@@ -524,6 +559,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+                     mSecondaryPhy,
+                     mInterval,
+                     mTxPowerLevel,
++                    mTxPowerSpoofLevel,
+                     mOwnAddressType);
+         }
+     }
+diff --git a/system/gd/hci/le_advertising_manager.cc b/system/gd/hci/le_advertising_manager.cc
+index 7a3eebf47b..6f539baef8 100644
+--- a/system/gd/hci/le_advertising_manager.cc
++++ b/system/gd/hci/le_advertising_manager.cc
+@@ -74,6 +74,7 @@ struct Advertiser {
+   common::Callback<void(Address, AddressType)> scan_callback;
+   common::Callback<void(ErrorCode, uint8_t, uint8_t)> set_terminated_callback;
+   int8_t tx_power;
++  int8_t tx_power_spoof_level; // added for spoofed tx power
+   uint16_t duration;
+   uint8_t max_extended_advertising_events;
+   bool started = false;
+@@ -182,7 +183,8 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+                 handler->BindOnceOn(this, &impl::on_read_advertising_physical_channel_tx_power));
+       }
+     }
+-    enabled_sets_ = std::vector<EnabledSet>(num_instances_);
++    enabled_sets_ = std::vector<EnabledSet>(num_instances_); // constructs a vector that can hold num_instances_ EnabledSets
++    // struct EnabledSet - advertising_handle, duration, max_extended_advertising_events
+     for (size_t i = 0; i < enabled_sets_.size(); i++) {
+       enabled_sets_[i].advertising_handle_ = kInvalidHandle;
+     }
+@@ -447,6 +449,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+     }
+   }
+ 
++  // This function is called by StartAdvertisingSet in this file
+   void create_advertiser(
+           int reg_id, const AdvertisingConfig config,
+           common::Callback<void(Address, AddressType)> scan_callback,
+@@ -835,11 +838,15 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+   }
+ 
+   void set_parameters(AdvertiserId advertiser_id, AdvertisingConfig config) {
++    log::info("set_parameters: advertiser_id: {}, config: {}", advertiser_id, config.to_string());
+     config.tx_power = get_tx_power_after_calibration(static_cast<int8_t>(config.tx_power));
++    config.tx_power_spoof_level = get_tx_power_after_calibration(
++            static_cast<int8_t>(config.tx_power_spoof_level));
+     advertising_sets_[advertiser_id].is_legacy = config.legacy_pdus;
+     advertising_sets_[advertiser_id].connectable = config.connectable;
+     advertising_sets_[advertiser_id].discoverable = config.discoverable;
+     advertising_sets_[advertiser_id].tx_power = config.tx_power;
++    advertising_sets_[advertiser_id].tx_power_spoof_level = config.tx_power_spoof_level;
+     advertising_sets_[advertiser_id].directed = config.directed;
+     advertising_sets_[advertiser_id].is_periodic = config.periodic_advertising_parameters.enable;
+ 
+@@ -849,6 +856,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+ 
+     switch (advertising_api_type_) {
+       case (AdvertisingApiType::LEGACY): {
++        log::info("set_parameters: Legacy");
+         le_advertising_interface_->EnqueueCommand(
+                 hci::LeSetAdvertisingParametersBuilder::Create(
+                         config.interval_min, config.interval_max, config.advertising_type,
+@@ -859,6 +867,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+                         true, advertiser_id));
+       } break;
+       case (AdvertisingApiType::ANDROID_HCI): {
++        log::info("set_parameters: Android HCI/MULTI_ADVT");
+         le_advertising_interface_->EnqueueCommand(
+                 hci::LeMultiAdvtParamBuilder::Create(
+                         config.interval_min, config.interval_max, config.advertising_type,
+@@ -871,11 +880,13 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+                                             true, advertiser_id));
+       } break;
+       case (AdvertisingApiType::EXTENDED): {
++        log::info("set_parameters: Extended");
+         // sid must be in range 0x00 to 0x0F. Since no controller supports more than
+         // 16 advertisers, it's safe to make sid equal to id.
+         config.sid = advertiser_id % kAdvertisingSetIdMask;
+ 
+         if (config.legacy_pdus) {
++          log::info("set_parameters: Legacy Extended");
+           LegacyAdvertisingEventProperties legacy_properties =
+                   LegacyAdvertisingEventProperties::ADV_IND;
+           if (config.connectable && config.directed) {
+@@ -891,6 +902,17 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+           if (!config.scannable && !config.connectable) {
+             legacy_properties = LegacyAdvertisingEventProperties::ADV_NONCONN_IND;
+           }
++          log::info("set_parameters: Legacy Extended properties: {}", legacy_properties);
++          log::info("set_parameters: Legacy Extended, interval_min: {}, interval_max: {}",
++                    config.interval_min, config.interval_max);
++          log::info("set_parameters: Legacy Extended, channel_map: {}, own_address_type: {}",
++                    config.channel_map, own_address_type);
++          log::info("set_parameters: Legacy Extended, peer_address_type: {}, peer_address: {}",
++                    config.peer_address_type, config.peer_address);
++          log::info("set_parameters: Legacy Extended, filter_policy: {}, tx_power: {}",
++                    config.filter_policy, config.tx_power);
++          log::info("set_parameters: Legacy Extended, sid: {}, enable_scan_request_notifications: {}",
++                    config.sid, config.enable_scan_request_notifications);
+ 
+           le_advertising_interface_->EnqueueCommand(
+                   LeSetExtendedAdvertisingParametersLegacyBuilder::Create(
+@@ -913,6 +935,18 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+           extended_properties.anonymous_ = config.anonymous;
+           extended_properties.tx_power_ = config.include_tx_power;
+ 
++          log::info("set_parameters: Extended properties: {}", extended_properties);
++          log::info("set_parameters: Extended, interval_min: {}, interval_max: {}",
++                    config.interval_min, config.interval_max);
++          log::info("set_parameters: Extended, channel_map: {}, own_address_type: {}",
++                    config.channel_map, own_address_type);
++          log::info("set_parameters: Extended, peer_address_type: {}, peer_address: {}",
++                    config.peer_address_type, config.peer_address);
++          log::info("set_parameters: Extended, filter_policy: {}, tx_power: {}",
++                    config.filter_policy, config.tx_power);
++          log::info("set_parameters: Extended, sid: {}, enable_scan_request_notifications: {}",
++                    config.sid, config.enable_scan_request_notifications);
++
+           le_advertising_interface_->EnqueueCommand(
+                   hci::LeSetExtendedAdvertisingParametersBuilder::Create(
+                           advertiser_id, extended_properties, config.interval_min,
+@@ -991,6 +1025,8 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+   }
+ 
+   void set_data(AdvertiserId advertiser_id, bool set_scan_rsp, std::vector<GapData> data) {
++    log::info("set_data: advertiser_id: {}, set_scan_rsp: {}, data: {}", advertiser_id,
++              set_scan_rsp, data);
+     // The Flags data type shall be included when any of the Flag bits are non-zero and the
+     // advertising packet is connectable and discoverable.
+     if (!set_scan_rsp && advertising_sets_[advertiser_id].connectable &&
+@@ -1006,9 +1042,12 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+     }
+ 
+     // Find and fill TX Power with the correct value.
++    // TODO: CHANGE THIS TO USE THE SPOOFED TX POWER IF APPLICABLE (!!!!!)
+     for (auto& gap_data : data) {
++      log::info("set_data: for gap_data: {}", gap_data.to_string());
+       if (gap_data.data_type_ == GapDataType::TX_POWER_LEVEL) {
+-        gap_data.data_[0] = advertising_sets_[advertiser_id].tx_power;
++        log::info("set_data: found TX Power - need to update this for spoofing later");
++        gap_data.data_[0] = advertising_sets_[advertiser_id].tx_power_spoof_level;
+         break;
+       }
+     }
+@@ -1027,6 +1066,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+ 
+     switch (advertising_api_type_) {
+       case (AdvertisingApiType::LEGACY): {
++        log::info("set_data: Legacy");
+         if (set_scan_rsp) {
+           le_advertising_interface_->EnqueueCommand(
+                   hci::LeSetScanResponseDataBuilder::Create(data),
+diff --git a/system/gd/hci/le_advertising_manager.h b/system/gd/hci/le_advertising_manager.h
+index 52d0802ab0..b3948642a8 100644
+--- a/system/gd/hci/le_advertising_manager.h
++++ b/system/gd/hci/le_advertising_manager.h
+@@ -56,6 +56,7 @@ public:
+   uint8_t channel_map;
+   AdvertisingFilterPolicy filter_policy;
+   uint8_t tx_power;  // -127 to +20 (0x7f is no preference)
++  uint8_t tx_power_spoof_level; // -127 to +1 (defaults to tx_power at Java level)
+   bool connectable = false;
+   bool discoverable = false;
+   bool scannable = false;
+diff --git a/system/include/hardware/ble_advertiser.h b/system/include/hardware/ble_advertiser.h
+index 11a753e92a..55e7048ee3 100644
+--- a/system/include/hardware/ble_advertiser.h
++++ b/system/include/hardware/ble_advertiser.h
+@@ -35,6 +35,7 @@ struct AdvertiseParameters {
+   uint32_t max_interval;
+   uint8_t channel_map;
+   int8_t tx_power;
++  int8_t tx_power_spoof_level;
+   uint8_t primary_advertising_phy;
+   uint8_t secondary_advertising_phy;
+   uint8_t scan_request_notification_enable;
+diff --git a/system/main/shim/le_advertising_manager.cc b/system/main/shim/le_advertising_manager.cc
+index 8f9005c47c..99cc993742 100644
+--- a/system/main/shim/le_advertising_manager.cc
++++ b/system/main/shim/le_advertising_manager.cc
+@@ -144,6 +144,7 @@ public:
+   }
+ 
+   // ::BleAdvertiserInterface
++  // This function is the one that is called by com_android_bluetooth_gatt.cpp startAdvertisingSetNative in JNI
+   void StartAdvertisingSet(uint8_t client_id, int reg_id,
+                            ::BleAdvertiserInterface::IdTxPowerStatusCallback /* register_cb */,
+                            ::AdvertiseParameters params, std::vector<uint8_t> advertise_data,
+@@ -153,6 +154,7 @@ public:
+                            uint8_t maxExtAdvEvents,
+                            ::BleAdvertiserInterface::IdStatusCallback /* timeout_cb */) override {
+     log::info("in shim layer");
++    log::info("in shim layer, StartAdvertisingSet")
+ 
+     bluetooth::hci::AdvertisingConfig config{};
+     parse_parameter(config, params);
+@@ -365,6 +367,7 @@ private:
+     config.interval_max = params.max_interval;
+     config.channel_map = params.channel_map;
+     config.tx_power = params.tx_power;
++    config.tx_power_spoof_level = params.tx_power_spoof_level;
+     config.use_le_coded_phy = params.primary_advertising_phy == 0x03;
+     config.secondary_advertising_phy =
+             static_cast<bluetooth::hci::SecondaryPhyType>(params.secondary_advertising_phy);

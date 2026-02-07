@@ -1,0 +1,646 @@
+
+project bionic/
+diff --git a/libc/include/netinet/if_ether.h b/libc/include/netinet/if_ether.h
+index b1b9ed0..21a3da9 100644
+--- a/libc/include/netinet/if_ether.h
++++ b/libc/include/netinet/if_ether.h
+@@ -37,7 +37,7 @@
+ #include <sys/cdefs.h>
+ #include <sys/types.h>
+ 
+-#if defined(__USE_BSD)
++//#if defined(__USE_BSD)
+ 
+ /* pull in Ethernet-specific definitions and packet structures */
+ 
+@@ -105,6 +105,6 @@ struct	ether_arp {
+ 	(enaddr)[5] = ((u_int8_t *)ip6addr)[15];			\
+ }
+ 
+-#endif /* __USE_BSD */
++//#endif /* __USE_BSD /
+ 
+ #endif /* !_NET_IF_ETHER_H_ */
+
+project device/oneplus/lemonadep/
+diff --git a/device.mk b/device.mk
+index a820282..ce816ba 100644
+--- a/device.mk
++++ b/device.mk
+@@ -4,6 +4,8 @@
+ # SPDX-License-Identifier: Apache-2.0
+ #
+ 
++TARGET_USES_CUSTOM_GAPPS := true
++
+ # AAPT
+ PRODUCT_AAPT_CONFIG := normal
+ PRODUCT_AAPT_PREF_CONFIG := xxxhdpi
+@@ -13,6 +15,9 @@ PRODUCT_PACKAGES += \
+     KeyHandler \
+     tri-state-key-calibrate
+ 
++# Make sure it uses smaller gapps
++# TARGET_USES_CUSTOM_GAPPS := true
++
+ # Audio
+ PRODUCT_COPY_FILES += \
+     $(LOCAL_PATH)/audio/audio_platform_info_intcodec.xml:$(TARGET_COPY_OUT_ODM)/etc/audio_platform_info.xml \
+@@ -76,5 +81,8 @@ PRODUCT_SOONG_NAMESPACES += \
+ # Inherit from the common OEM chipset makefile.
+ $(call inherit-product, device/oneplus/sm8350-common/common.mk)
+ 
++# Add 1+ cameras
++# $(call inherit-product, vendor/oplus/camera/opluscamera.mk)
++
+ # Inherit from the proprietary files makefile.
+ $(call inherit-product, vendor/oneplus/lemonadep/lemonadep-vendor.mk)
+diff --git a/lineage_lemonadep.mk b/lineage_lemonadep.mk
+index 5d4e657..b73a485 100644
+--- a/lineage_lemonadep.mk
++++ b/lineage_lemonadep.mk
+@@ -30,3 +30,5 @@ PRODUCT_BUILD_PROP_OVERRIDES += \
+     DeviceProduct=OnePlus9Pro \
+     SystemDevice=OnePlus9Pro \
+     SystemName=OnePlus9Pro
++
++TARGET_INCLUDE_ACCORD=false
+
+project device/oneplus/sm8350-common/
+diff --git a/BoardConfigCommon.mk b/BoardConfigCommon.mk
+index 502cb11..d5e6a9d 100644
+--- a/BoardConfigCommon.mk
++++ b/BoardConfigCommon.mk
+@@ -30,7 +30,7 @@ TARGET_CPU_ABI := arm64-v8a
+ TARGET_CPU_VARIANT := cortex-a76
+ 
+ TARGET_2ND_ARCH := arm
+-TARGET_2ND_ARCH_VARIANT := armv8-a
++TARGET_2ND_ARCH_VARIANT := armv8-2a
+ TARGET_2ND_CPU_ABI := armeabi-v7a
+ TARGET_2ND_CPU_ABI2 := armeabi
+ TARGET_2ND_CPU_VARIANT := cortex-a76
+@@ -85,8 +85,15 @@ BOARD_KERNEL_PAGESIZE := 4096
+ BOARD_KERNEL_SEPARATED_DTBO := true
+ BOARD_MKBOOTIMG_ARGS += --header_version $(BOARD_BOOT_HEADER_VERSION)
+ BOARD_RAMDISK_USE_LZ4 := true
++ifeq ($(MAINLINE_BUILD),true)
++TARGET_KERNEL_SOURCE := kernel/oneplus/msm
++TARGET_KERNEL_CONFIG := gki_defconfig
++#PRODUCT_SOONG_NAMESPACES += kernel/oneplus/mainline
++else 
+ TARGET_KERNEL_SOURCE := kernel/oneplus/sm8350
+-TARGET_KERNEL_CONFIG := vendor/lahaina-qgki_defconfig
++#TARGET_KERNEL_CONFIG := vendor/lahaina-qgki_defconfig
++TARGET_KERNEL_CONFIG := nethunter_defconfig
++endif
+ TARGET_KERNEL_NO_GCC := true
+ 
+ # Kernel modules
+
+project external/libnl/
+diff --git a/Android.bp b/Android.bp
+index 5ab779a..07e69cf 100644
+--- a/Android.bp
++++ b/Android.bp
+@@ -79,7 +79,17 @@ cc_library {
+         "lib/route/route_obj.c",
+         "lib/route/route_utils.c",
+         "lib/route/rtnl.c",
++	"lib/route/neigh.c"
+     ],
++/*
++    srcs: [
++	"lib/*.c",
++	"lib/fib_lookup/*.c",
++	"lib/genl/*.c",
++	"lib/netfilter/*.c",
++	"lib/route/*.c",
++	"lib/route/link/*.c",
++    ],*/
+ 
+     local_include_dirs: [
+         "include",
+
+project packages/apps/ColumbusService/
+diff --git a/src/org/protonaosp/columbus/ColumbusService.kt b/src/org/protonaosp/columbus/ColumbusService.kt
+index ceb84e1..0af6763 100644
+--- a/src/org/protonaosp/columbus/ColumbusService.kt
++++ b/src/org/protonaosp/columbus/ColumbusService.kt
+@@ -279,6 +279,12 @@ class ColumbusService : Service(), SharedPreferences.OnSharedPreferenceChangeLis
+                 return
+             }
+ 
++            if (android.provider.Settings.System.getInt(
++                contentResolver,
++                android.provider.Settings.System.LOCK_GESTURE_STATUS
++            ) == 1) {
++                return
++            }
+             if (!action.canRun()) return
+ 
+             vibDoubleTap?.let { vibrator?.vibrate(it, sonicAudioAttr) }
+
+project packages/apps/Settings/
+diff --git a/res/values/strings.xml b/res/values/strings.xml
+index 457f308f6b7..db1ff920c3a 100644
+--- a/res/values/strings.xml
++++ b/res/values/strings.xml
+@@ -9743,6 +9743,12 @@ Data usage charges may apply.</string>
+     <!-- [CHAR LIMIT=180] Notification settings: vibration -->
+     <string name="notification_vibrate_title">Vibration</string>
+ 
++    <!-- [CHAR LIMIT=180] Notification settings: vibration pattern -->
++    <string name="notification_vibration_pattern_title">Vibration pattern</string>
++
++    <!-- [CHAR LIMIT=180] Notification settings: vibration pattern summary -->
++    <string name="notification_vibration_pattern_summary">Pattern waveform</string>
++
+     <!-- [CHAR LIMIT=180] Notification settings: sound -->
+     <string name="notification_channel_sound_title">Sound</string>
+ 
+diff --git a/res/xml/channel_notification_settings.xml b/res/xml/channel_notification_settings.xml
+index a8b536b717d..1b9f2707b2b 100644
+--- a/res/xml/channel_notification_settings.xml
++++ b/res/xml/channel_notification_settings.xml
+@@ -81,24 +81,31 @@
+         android:icon="@drawable/ic_volume_ringer_vibrate"
+         android:title="@string/notification_vibrate_title" />
+ 
++    <!-- Vibration Pattern -->
++    <Preference
++        android:key="vibration_pattern"
++        android:order="13"
++        android:title="@string/notification_vibration_pattern_title"
++        android:summary="@string/notification_vibration_pattern_summary" />
++
+     <!-- Visibility Override -->
+     <com.android.settings.RestrictedListPreference
+         android:key="visibility_override"
+-        android:order="13"
++        android:order="14"
+         android:icon="@drawable/ic_notification_vis_override"
+         android:title="@string/app_notification_visibility_override_title"/>
+ 
+     <!-- Lights -->
+     <com.android.settingslib.RestrictedSwitchPreference
+         android:key="lights"
+-        android:order="14"
++        android:order="15"
+         android:icon="@drawable/ic_lightbulb_outline_24"
+         android:title="@string/notification_show_lights_title" />
+ 
+     <!-- Show badge -->
+     <com.android.settingslib.RestrictedSwitchPreference
+         android:key="badge"
+-        android:order="15"
++        android:order="16"
+         android:title="@string/notification_channel_badge_title"
+         android:icon="@drawable/ic_notification_dot"
+         settings:restrictedSwitchSummary="@string/enabled_by_admin"/>
+diff --git a/res/xml/conversation_notification_settings.xml b/res/xml/conversation_notification_settings.xml
+index 89812a774ae..42c5f2d9de6 100644
+--- a/res/xml/conversation_notification_settings.xml
++++ b/res/xml/conversation_notification_settings.xml
+@@ -88,6 +88,12 @@
+             android:icon="@drawable/ic_volume_ringer_vibrate"
+             android:title="@string/notification_vibrate_title" />
+ 
++        <!-- Vibration Pattern -->
++        <Preference
++            android:key="vibration_pattern"
++            android:title="@string/notification_vibration_pattern_title"
++            android:summary="@string/notification_vibration_pattern_summary" />
++
+     <!-- demote -->
+     <Preference
+         android:key="demote"
+diff --git a/src/com/android/settings/notification/app/ChannelNotificationSettings.java b/src/com/android/settings/notification/app/ChannelNotificationSettings.java
+index a7aba5284d6..9b1160587c7 100644
+--- a/src/com/android/settings/notification/app/ChannelNotificationSettings.java
++++ b/src/com/android/settings/notification/app/ChannelNotificationSettings.java
+@@ -128,6 +128,7 @@ public class ChannelNotificationSettings extends NotificationSettings {
+         mControllers.add(new SoundPreferenceController(context, this,
+                 mDependentFieldListener, mBackend));
+         mControllers.add(new VibrationPreferenceController(context, mBackend));
++        mControllers.add(new VibrationPatternPreferenceController(context, this, mDependentFieldListener, mBackend));
+         mControllers.add(new AppLinkPreferenceController(context));
+         mControllers.add(new VisibilityPreferenceController(context, new LockPatternUtils(context),
+                 mBackend));
+diff --git a/src/com/android/settings/notification/app/ConversationNotificationSettings.java b/src/com/android/settings/notification/app/ConversationNotificationSettings.java
+index 02ea6c060ec..2caa7787c8a 100644
+--- a/src/com/android/settings/notification/app/ConversationNotificationSettings.java
++++ b/src/com/android/settings/notification/app/ConversationNotificationSettings.java
+@@ -91,6 +91,7 @@ public class ConversationNotificationSettings extends NotificationSettings {
+         mControllers.add(new SoundPreferenceController(context, this,
+                 mDependentFieldListener, mBackend));
+         mControllers.add(new VibrationPreferenceController(context, mBackend));
++        mControllers.add(new VibrationPatternPreferenceController(context, this, mDependentFieldListener, mBackend));
+         mControllers.add(new VisibilityPreferenceController(context, new LockPatternUtils(context),
+                 mBackend));
+         mControllers.add(new LightsPreferenceController(context, mBackend));
+
+project packages/modules/Bluetooth/
+diff --git a/android/app/jni/com_android_bluetooth_gatt.cpp b/android/app/jni/com_android_bluetooth_gatt.cpp
+index be0922c8f..f8aa81a06 100644
+--- a/android/app/jni/com_android_bluetooth_gatt.cpp
++++ b/android/app/jni/com_android_bluetooth_gatt.cpp
+@@ -2281,6 +2281,7 @@ static uint32_t INTERVAL_MAX = 0xFFFFFF;
+ static uint32_t INTERVAL_DELTA = 50;
+ 
+ static AdvertiseParameters parseParams(JNIEnv* env, jobject i) {
++  // log::debug("parseParams: {}", i);
+   AdvertiseParameters p;
+ 
+   jclass clazz = env->GetObjectClass(i);
+@@ -2306,6 +2307,8 @@ static AdvertiseParameters parseParams(JNIEnv* env, jobject i) {
+   uint32_t interval = env->CallIntMethod(i, methodId);
+   methodId = env->GetMethodID(clazz, "getTxPowerLevel", "()I");
+   int8_t txPowerLevel = env->CallIntMethod(i, methodId);
++  methodId = env->GetMethodID(clazz, "getTxPowerSpoofLevel", "()I");
++  int8_t txPowerSpoofLevel = env->CallIntMethod(i, methodId);
+   methodId = env->GetMethodID(clazz, "getOwnAddressType", "()I");
+   int8_t ownAddressType = env->CallIntMethod(i, methodId);
+   methodId = env->GetMethodID(clazz, "isDirected", "()Z");
+@@ -2349,6 +2352,7 @@ static AdvertiseParameters parseParams(JNIEnv* env, jobject i) {
+   p.max_interval = interval + INTERVAL_DELTA;
+   p.channel_map = 0x07; /* all channels */
+   p.tx_power = txPowerLevel;
++  p.tx_power_spoof_level = txPowerSpoofLevel;
+   p.primary_advertising_phy = primaryPhy;
+   p.secondary_advertising_phy = secondaryPhy;
+   p.scan_request_notification_enable = false;
+@@ -2360,6 +2364,7 @@ static AdvertiseParameters parseParams(JNIEnv* env, jobject i) {
+   }
+   p.peer_address_type = peerAddressType;
+   p.discoverable = isDiscoverable;
++  log::debug("parseParams AdvertiseParams: advertising_event_properties: {}", p.advertising_event_properties);
+   return p;
+ }
+ 
+diff --git a/framework/api/current.txt b/framework/api/current.txt
+index a9bc28a28..24e635ec2 100644
+--- a/framework/api/current.txt
++++ b/framework/api/current.txt
+@@ -1274,6 +1274,7 @@ package android.bluetooth.le {
+     method public int getPrimaryPhy();
+     method public int getSecondaryPhy();
+     method public int getTxPowerLevel();
++    method public int getTxPowerSpoofLevel();
+     method public boolean includeTxPower();
+     method public boolean isAnonymous();
+     method public boolean isConnectable();
+@@ -1308,6 +1309,7 @@ package android.bluetooth.le {
+     method public android.bluetooth.le.AdvertisingSetParameters.Builder setScannable(boolean);
+     method public android.bluetooth.le.AdvertisingSetParameters.Builder setSecondaryPhy(int);
+     method public android.bluetooth.le.AdvertisingSetParameters.Builder setTxPowerLevel(int);
++    method public android.bluetooth.le.AdvertisingSetParameters.Builder setTxPowerSpoof(int);
+   }
+ 
+   public final class BluetoothLeAdvertiser {
+diff --git a/framework/api/lint-baseline.txt b/framework/api/lint-baseline.txt
+index 5e5e51135..7c6ddf02a 100644
+--- a/framework/api/lint-baseline.txt
++++ b/framework/api/lint-baseline.txt
+@@ -29,3 +29,17 @@ BroadcastBehavior: android.bluetooth.BluetoothDevice#ACTION_PAIRING_REQUEST:
+     Field 'ACTION_PAIRING_REQUEST' is missing @BroadcastBehavior
+ BroadcastBehavior: android.bluetooth.BluetoothDevice#ACTION_UUID:
+     Field 'ACTION_UUID' is missing @BroadcastBehavior
++
++
++MissingGetterMatchingBuilder: android.bluetooth.le.AdvertisingSetParameters.Builder#setTxPowerSpoof(int):
++    android.bluetooth.le.AdvertisingSetParameters does not declare a `getTxPowerSpoof()` method matching method android.bluetooth.le.AdvertisingSetParameters.Builder.setTxPowerSpoof(int)
++
++
++MissingNullability: android.bluetooth.le.AdvertisingSetParameters.Builder#setTxPowerSpoof(int):
++    Missing nullability on method `setTxPowerSpoof` return
++
++
++UnflaggedApi: android.bluetooth.le.AdvertisingSetParameters#getTxPowerSpoofLevel():
++    New API must be flagged with @FlaggedApi: method android.bluetooth.le.AdvertisingSetParameters.getTxPowerSpoofLevel()
++UnflaggedApi: android.bluetooth.le.AdvertisingSetParameters.Builder#setTxPowerSpoof(int):
++    New API must be flagged with @FlaggedApi: method android.bluetooth.le.AdvertisingSetParameters.Builder.setTxPowerSpoof(int)
+diff --git a/framework/java/android/bluetooth/le/AdvertisingSetParameters.java b/framework/java/android/bluetooth/le/AdvertisingSetParameters.java
+index b8fa11c55..14f1f6020 100644
+--- a/framework/java/android/bluetooth/le/AdvertisingSetParameters.java
++++ b/framework/java/android/bluetooth/le/AdvertisingSetParameters.java
+@@ -144,6 +144,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+     private final boolean mIsHighDutyCycle;
+     private final String mPeerAddress;
+     private final @AddressType int mPeerAddressType;
++    private final int mTxPowerSpoofLevel;
+ 
+     private AdvertisingSetParameters(
+             boolean connectable,
+@@ -156,6 +157,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+             int secondaryPhy,
+             int interval,
+             int txPowerLevel,
++            int txPowerSpoofLevel,
+             @AddressTypeStatus int ownAddressType,
+             boolean isDirected,
+             boolean isHighDutyCycle,
+@@ -171,6 +173,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+         mSecondaryPhy = secondaryPhy;
+         mInterval = interval;
+         mTxPowerLevel = txPowerLevel;
++        mTxPowerSpoofLevel = txPowerSpoofLevel;
+         mOwnAddressType = ownAddressType;
+         mIsDirected = isDirected;
+         mIsHighDutyCycle = isHighDutyCycle;
+@@ -188,6 +191,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+         mSecondaryPhy = in.readInt();
+         mInterval = in.readInt();
+         mTxPowerLevel = in.readInt();
++        mTxPowerSpoofLevel = in.readInt();
+         mOwnAddressType = in.readInt();
+         mDiscoverable = in.readInt() != 0;
+         mIsDirected = in.readBoolean();
+@@ -246,6 +250,11 @@ public final class AdvertisingSetParameters implements Parcelable {
+         return mTxPowerLevel;
+     }
+ 
++    /** Returns the TX power level to be shown in the extended header. */
++    public int getTxPowerSpoofLevel() {
++        return mTxPowerSpoofLevel;
++    }
++
+     /**
+      * @return the own address type for advertising
+      * @hide
+@@ -319,6 +328,8 @@ public final class AdvertisingSetParameters implements Parcelable {
+                 + mInterval
+                 + ", txPowerLevel="
+                 + mTxPowerLevel
++                + ", txPowerSpoofLevel="
++                + mTxPowerSpoofLevel
+                 + ", ownAddressType="
+                 + mOwnAddressType
+                 + ", isDirected="
+@@ -348,6 +359,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+         dest.writeInt(mSecondaryPhy);
+         dest.writeInt(mInterval);
+         dest.writeInt(mTxPowerLevel);
++        dest.writeInt(mTxPowerSpoofLevel);
+         dest.writeInt(mOwnAddressType);
+         dest.writeInt(mDiscoverable ? 1 : 0);
+         dest.writeBoolean(mIsDirected);
+@@ -382,6 +394,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+         private int mSecondaryPhy = BluetoothDevice.PHY_LE_1M;
+         private int mInterval = INTERVAL_LOW;
+         private int mTxPowerLevel = TX_POWER_MEDIUM;
++        private int mTxPowerSpoofLevel = TX_POWER_MEDIUM;
+         private int mOwnAddressType = ADDRESS_TYPE_DEFAULT;
+         private boolean mIsDirected = false;
+         private boolean mIsHighDutyCycle = false;
+@@ -541,6 +554,28 @@ public final class AdvertisingSetParameters implements Parcelable {
+                 throw new IllegalArgumentException("unknown txPowerLevel " + txPowerLevel);
+             }
+             mTxPowerLevel = txPowerLevel;
++            mTxPowerSpoofLevel = txPowerLevel;
++            return this;
++        }
++
++        /**
++         * Set what TX power level should be shown in the extended header. 
++         * ! THIS MUST BE CALLED AFTER setTxPowerLevel OR CHANGES DO NOT GET SAVED.
++         * 
++         * @param txPowerSpoofLevel Transmission power of Bluetooth LE Advertising, in dBm. The valid
++         *     range is [-127, 1] Recommended values are: {@link
++         *     AdvertisingSetParameters#TX_POWER_ULTRA_LOW}, {@link
++         *     AdvertisingSetParameters#TX_POWER_LOW}, {@link
++         *     AdvertisingSetParameters#TX_POWER_MEDIUM}, or {@link
++         *     AdvertisingSetParameters#TX_POWER_HIGH}.
++         * @throws IllegalArgumentException If the {@code txPowerSpoofLevel} is invalid.
++         */
++
++        public Builder setTxPowerSpoof(int txPowerSpoofLevel) {
++            if (txPowerSpoofLevel < TX_POWER_MIN || txPowerSpoofLevel > TX_POWER_MAX) {
++                throw new IllegalArgumentException("unknown txPowerSpoofLevel " + txPowerSpoofLevel);
++            }
++            mTxPowerSpoofLevel = txPowerSpoofLevel;
+             return this;
+         }
+ 
+@@ -712,6 +747,7 @@ public final class AdvertisingSetParameters implements Parcelable {
+                     mSecondaryPhy,
+                     mInterval,
+                     mTxPowerLevel,
++                    mTxPowerSpoofLevel,
+                     mOwnAddressType,
+                     mIsDirected,
+                     mIsHighDutyCycle,
+diff --git a/system/gd/hci/le_advertising_manager.cc b/system/gd/hci/le_advertising_manager.cc
+index d626b2ee1..70a6e9791 100644
+--- a/system/gd/hci/le_advertising_manager.cc
++++ b/system/gd/hci/le_advertising_manager.cc
+@@ -74,6 +74,7 @@ struct Advertiser {
+   common::Callback<void(Address, AddressType)> scan_callback;
+   common::Callback<void(ErrorCode, uint8_t, uint8_t)> set_terminated_callback;
+   int8_t tx_power;
++  int8_t tx_power_spoof_level; // added for spoofed tx power
+   uint16_t duration;
+   uint8_t max_extended_advertising_events;
+   bool started = false;
+@@ -186,7 +187,8 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+                 handler->BindOnceOn(this, &impl::on_read_advertising_physical_channel_tx_power));
+       }
+     }
+-    enabled_sets_ = std::vector<EnabledSet>(num_instances_);
++    enabled_sets_ = std::vector<EnabledSet>(num_instances_); // constructs a vector that can hold num_instances_ EnabledSets
++    // struct EnabledSet - advertising_handle, duration, max_extended_advertising_events
+     for (size_t i = 0; i < enabled_sets_.size(); i++) {
+       enabled_sets_[i].advertising_handle_ = kInvalidHandle;
+     }
+@@ -476,6 +478,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+     }
+   }
+ 
++  // This function is called by StartAdvertisingSet in this file
+   void create_advertiser(
+           int reg_id, const AdvertisingConfig config,
+           common::Callback<void(Address, AddressType)> scan_callback,
+@@ -918,6 +921,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+ 
+     switch (advertising_api_type_) {
+       case (AdvertisingApiType::LEGACY): {
++        log::info("set_parameters: Legacy");
+         le_advertising_interface_->EnqueueCommand(
+                 hci::LeSetAdvertisingParametersBuilder::Create(
+                         config.interval_min, config.interval_max, config.advertising_type,
+@@ -928,6 +932,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+                         true, advertiser_id));
+       } break;
+       case (AdvertisingApiType::ANDROID_HCI): {
++        log::info("set_parameters: Android HCI/MULTI_ADVT");
+         le_advertising_interface_->EnqueueCommand(
+                 hci::LeMultiAdvtParamBuilder::Create(
+                         config.interval_min, config.interval_max, config.advertising_type,
+@@ -940,11 +945,13 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+                                             true, advertiser_id));
+       } break;
+       case (AdvertisingApiType::EXTENDED): {
++        log::info("set_parameters: Extended");
+         // sid must be in range 0x00 to 0x0F. Since no controller supports more than
+         // 16 advertisers, it's safe to make sid equal to id.
+         config.sid = advertiser_id % kAdvertisingSetIdMask;
+ 
+         if (config.legacy_pdus) {
++          log::info("set_parameters: Legacy Extended");
+           LegacyAdvertisingEventProperties legacy_properties =
+                   LegacyAdvertisingEventProperties::ADV_IND;
+           if (config.connectable && config.directed) {
+@@ -960,6 +967,17 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+           if (!config.scannable && !config.connectable) {
+             legacy_properties = LegacyAdvertisingEventProperties::ADV_NONCONN_IND;
+           }
++          log::info("set_parameters: Legacy Extended properties: {}", legacy_properties);
++          log::info("set_parameters: Legacy Extended, interval_min: {}, interval_max: {}",
++                    config.interval_min, config.interval_max);
++          log::info("set_parameters: Legacy Extended, channel_map: {}, own_address_type: {}",
++                    config.channel_map, own_address_type);
++          log::info("set_parameters: Legacy Extended, peer_address_type: {}, peer_address: {}",
++                    config.peer_address_type, config.peer_address);
++          log::info("set_parameters: Legacy Extended, filter_policy: {}, tx_power: {}",
++                    config.filter_policy, config.tx_power);
++          log::info("set_parameters: Legacy Extended, sid: {}, enable_scan_request_notifications: {}",
++                    config.sid, config.enable_scan_request_notifications);
+ 
+           le_advertising_interface_->EnqueueCommand(
+                   LeSetExtendedAdvertisingParametersLegacyBuilder::Create(
+@@ -982,6 +1000,18 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+           extended_properties.anonymous_ = config.anonymous;
+           extended_properties.tx_power_ = config.include_tx_power;
+ 
++          //log::info("set_parameters: Extended properties: {}", extended_properties);
++          log::info("set_parameters: Extended, interval_min: {}, interval_max: {}",
++                    config.interval_min, config.interval_max);
++          log::info("set_parameters: Extended, channel_map: {}, own_address_type: {}",
++                    config.channel_map, own_address_type);
++          log::info("set_parameters: Extended, peer_address_type: {}, peer_address: {}",
++                    config.peer_address_type, config.peer_address);
++          log::info("set_parameters: Extended, filter_policy: {}, tx_power: {}",
++                    config.filter_policy, config.tx_power);
++          log::info("set_parameters: Extended, sid: {}, enable_scan_request_notifications: {}",
++                    config.sid, config.enable_scan_request_notifications);
++
+           le_advertising_interface_->EnqueueCommand(
+                   hci::LeSetExtendedAdvertisingParametersBuilder::Create(
+                           advertiser_id, extended_properties, config.interval_min,
+@@ -1082,9 +1112,12 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+     }
+ 
+     // Find and fill TX Power with the correct value.
++    // TODO: CHANGE THIS TO USE THE SPOOFED TX POWER IF APPLICABLE (!!!!!)
+     for (auto& gap_data : data) {
++      log::info("set_data: for gap_data: {}", gap_data.ToString());
+       if (gap_data.data_type_ == GapDataType::TX_POWER_LEVEL) {
+-        gap_data.data_[0] = advertising_sets_[advertiser_id].tx_power;
++        log::info("set_data: found TX Power - need to update this for spoofing later");
++        gap_data.data_[0] = advertising_sets_[advertiser_id].tx_power_spoof_level;
+         break;
+       }
+     }
+@@ -1103,6 +1136,7 @@ struct LeAdvertisingManager::impl : public bluetooth::hci::LeAddressManagerCallb
+ 
+     switch (advertising_api_type_) {
+       case (AdvertisingApiType::LEGACY): {
++        log::info("set_data: Legacy");
+         if (set_scan_rsp) {
+           le_advertising_interface_->EnqueueCommand(
+                   hci::LeSetScanResponseDataBuilder::Create(data),
+diff --git a/system/gd/hci/le_advertising_manager.h b/system/gd/hci/le_advertising_manager.h
+index b50dd2623..e8eaa3a31 100644
+--- a/system/gd/hci/le_advertising_manager.h
++++ b/system/gd/hci/le_advertising_manager.h
+@@ -56,6 +56,7 @@ public:
+   uint8_t channel_map;
+   AdvertisingFilterPolicy filter_policy;
+   uint8_t tx_power;  // -127 to +20 (0x7f is no preference)
++  uint8_t tx_power_spoof_level; // -127 to +1 (defaults to tx_power at Java level)
+   bool connectable = false;
+   bool discoverable = false;
+   bool scannable = false;
+diff --git a/system/include/hardware/ble_advertiser.h b/system/include/hardware/ble_advertiser.h
+index dc9b86af7..05b5075a8 100644
+--- a/system/include/hardware/ble_advertiser.h
++++ b/system/include/hardware/ble_advertiser.h
+@@ -35,6 +35,7 @@ struct AdvertiseParameters {
+   uint32_t max_interval;
+   uint8_t channel_map;
+   int8_t tx_power;
++  int8_t tx_power_spoof_level;
+   uint8_t primary_advertising_phy;
+   uint8_t secondary_advertising_phy;
+   uint8_t scan_request_notification_enable;
+diff --git a/system/main/shim/le_advertising_manager.cc b/system/main/shim/le_advertising_manager.cc
+index dfe7ba5f5..332871347 100644
+--- a/system/main/shim/le_advertising_manager.cc
++++ b/system/main/shim/le_advertising_manager.cc
+@@ -144,6 +144,7 @@ public:
+   }
+ 
+   // ::BleAdvertiserInterface
++  // This function is the one that is called by com_android_bluetooth_gatt.cpp startAdvertisingSetNative in JNI
+   void StartAdvertisingSet(uint8_t client_id, int reg_id,
+                            ::BleAdvertiserInterface::IdTxPowerStatusCallback /* register_cb */,
+                            ::AdvertiseParameters params, std::vector<uint8_t> advertise_data,
+@@ -153,6 +154,7 @@ public:
+                            uint8_t maxExtAdvEvents,
+                            ::BleAdvertiserInterface::IdStatusCallback /* timeout_cb */) override {
+     log::info("in shim layer");
++    log::info("in shim layer, StartAdvertisingSet");
+ 
+     bluetooth::hci::AdvertisingConfig config{};
+     parse_parameter(config, params);
+@@ -363,6 +365,7 @@ private:
+     config.interval_max = params.max_interval;
+     config.channel_map = params.channel_map;
+     config.tx_power = params.tx_power;
++    config.tx_power_spoof_level = params.tx_power_spoof_level;
+     config.use_le_coded_phy = params.primary_advertising_phy == 0x03;
+     config.secondary_advertising_phy =
+             static_cast<bluetooth::hci::SecondaryPhyType>(params.secondary_advertising_phy);
+
+project vendor/lineage/
+diff --git a/config/common_full_phone.mk b/config/common_full_phone.mk
+index c134183..3eec24b 100644
+--- a/config/common_full_phone.mk
++++ b/config/common_full_phone.mk
+@@ -14,6 +14,8 @@ ifeq ($(TARGET_USES_MINI_GAPPS),true)
+ $(call inherit-product, vendor/gms/gms_mini.mk)
+ else ifeq ($(TARGET_USES_PICO_GAPPS),true)
+ $(call inherit-product, vendor/gms/gms_pico.mk)
++else ifeq ($(TARGET_USES_CUSTOM_GAPPS),true)
++$(call inherit-product, vendor/csx/gms_custom.mk)
+ else
+ $(call inherit-product, vendor/gms/gms_full.mk)
+ endif
+
+project vendor/oneplus/lemonadep/
+diff --git a/proprietary/vendor/etc/libnfc-nci.conf b/proprietary/vendor/etc/libnfc-nci.conf
+index 5d6cb10..92f76b3 100644
+--- a/proprietary/vendor/etc/libnfc-nci.conf
++++ b/proprietary/vendor/etc/libnfc-nci.conf
+@@ -1,7 +1,7 @@
+ ########################## Start of libnfc-nci.conf ###########################
+ ###############################################################################
+ # Application options
+-NFC_DEBUG_ENABLED=0
++NFC_DEBUG_ENABLED=1
+ ###############################################################################
+ # performance measurement
+ # Change this setting to control how often USERIAL log the performance (throughput)
+
+project vendor/oneplus/sm8350-common/
+diff --git a/sm8350-common-vendor.mk b/sm8350-common-vendor.mk
+index 162d10f..9c41122 100644
+--- a/sm8350-common-vendor.mk
++++ b/sm8350-common-vendor.mk
+@@ -1430,3 +1430,6 @@ PRODUCT_PACKAGES += \
+ 
+ PRODUCT_BOOT_JARS += \
+     WfdCommon
++
++#add nethunter firmwares
++$(call inherit-product, vendor/csx/nethunter.mk)
